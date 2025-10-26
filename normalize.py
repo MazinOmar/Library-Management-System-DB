@@ -1,6 +1,5 @@
 # normalize_borrowers.py
 
-
 import pandas as pd
 import re
 
@@ -25,6 +24,39 @@ def clean_ssn(s):
     if len(digits) == 9:
         return f"{digits[0:3]}-{digits[3:5]}-{digits[5:]}"
     return s  # leave if already formatted 
+
+def normalize_books():
+  df_books = pd.read_csv('books.csv', sep='\t')
+
+  # Book
+  df_book = df_books[['ISBN10', 'Title']].copy()
+  df_book.rename(columns={'ISBN10': 'Isbn', 'Title': 'Title'}, inplace=True)
+
+  # Authors
+  author_dict = {} # Seen authors
+  author_rows = [] # Cols: Author_id, Name
+  book_author_rows = [] # Cols: Author_id, Isbn
+  author_id = 1 # Index
+
+  for _, row in df_books.iterrows():
+    isbn = str(row['ISBN10'])
+    authors = [a.title() for a in str(row['Author']).split(',')]
+
+    for a in authors:
+      if a not in author_dict:
+        author_dict[a] = author_id
+        author_rows.append({'Author_id': author_id, 'Name': a})
+        author_id += 1
+
+      book_author_rows.append({'Author_id': author_dict[a], 'Isbn': isbn})
+
+  # Create CSVs
+  df_authors = pd.DataFrame(author_rows)
+  df_book_authors = pd.DataFrame(book_author_rows)
+
+  df_book.to_csv('book.csv', index=False)
+  df_authors.to_csv('authors.csv', index=False)
+  df_book_authors.to_csv('book_authors.csv', index=False)
 
 def main():
     df = pd.read_csv(IN_FILE, dtype=str)  # keep leading zeros
@@ -67,6 +99,8 @@ def main():
     #  report
     print(f"Rows written: {len(out)}")
     print(f"Saved: {OUT_FILE}")
+
+    normalize_books()
 
 if __name__ == "__main__":
     main()

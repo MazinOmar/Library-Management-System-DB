@@ -1,16 +1,14 @@
 # normalize_borrowers.py
-# Reads raw borrowers.csv and writes 3NF-compatible borrower.csv
-# Target schema: Borrower(Card_id, Ssn, Bname, Address, Phone)
+
 
 import pandas as pd
 import re
 
-IN_FILE  = "borrowers.csv"   # your raw file
+IN_FILE  = "borrowers.csv"   # raw file
 OUT_FILE = "borrower.csv"    # normalized output
 
 def clean_name(first, last):
     full = f"{(first or '').strip()} {(last or '').strip()}".strip()
-    # Title case but keep common Mc/Mac intact best-effort
     full = full.title()
     return full
 
@@ -26,19 +24,17 @@ def clean_ssn(s):
     digits = re.sub(r"\D", "", str(s))
     if len(digits) == 9:
         return f"{digits[0:3]}-{digits[3:5]}-{digits[5:]}"
-    return s  # leave as-is if already formatted or nonstandard
+    return s  # leave if already formatted 
 
 def main():
     df = pd.read_csv(IN_FILE, dtype=str)  # keep leading zeros
-    # Expected columns seen in the sample file:
-    # ID0000id, ssn, first_name, last_name, email, address, city, state, phone
 
     # Build Bname and Address
     df["Bname"]  = [clean_name(f, l) for f, l in zip(df.get("first_name"), df.get("last_name"))]
     df["Ssn"]    = df["ssn"].apply(clean_ssn)
     df["Phone"]  = df["phone"].apply(clean_phone)
 
-    # Combine address fields into one Address
+    # combination
     def combine_addr(row):
         parts = [row.get("address"), row.get("city"), row.get("state")]
         parts = [p.strip() for p in parts if isinstance(p, str) and p.strip()]
@@ -63,13 +59,12 @@ def main():
     # Final column order per schema
     out = df[["Card_id", "Ssn", "Bname", "Address", "Phone"]]
 
-    # Optional: sort by Card_id for determinism
-    out = out.sort_values(by="Card_id")
+    #out = out.sort_values(by="Card_id")
 
     # Write CSV with no index
     out.to_csv(OUT_FILE, index=False)
 
-    # Simple report
+    #  report
     print(f"Rows written: {len(out)}")
     print(f"Saved: {OUT_FILE}")
 
